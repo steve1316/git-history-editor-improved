@@ -5,6 +5,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import { useMemo } from "react"
 import EditStep from "./components/edit/EditStep"
+import ExportStep from "./components/export/ExportStep"
 import ImportStep from "./components/import/ImportStep"
 import { useUndoRedoShortcuts } from "./hooks/useUndoRedoShortcuts"
 import { isPersistenceAvailable, useStore } from "./store"
@@ -62,25 +63,9 @@ export default function App() {
                         </Alert>
                     )}
 
-                    <Box>{step === 1 ? <ImportStep /> : step === 2 ? <EditStep /> : <Placeholder name="Export" />}</Box>
+                    <Box>{step === 1 ? <ImportStep /> : step === 2 ? <EditStep /> : <ExportStep />}</Box>
                 </Container>
             </LocalizationProvider>
         </ThemeProvider>
     )
-}
-
-/** Props for `Placeholder`. */
-interface PlaceholderProps {
-    /** Name of the step this placeholder stands in for. */
-    name: string
-}
-
-/**
- * Temporary stand-in until the real step components land in later tasks.
- *
- * @param props Component props.
- * @returns A labelled placeholder.
- */
-function Placeholder({ name }: PlaceholderProps) {
-    return <Typography color="text.secondary">{name} step goes here.</Typography>
 }
