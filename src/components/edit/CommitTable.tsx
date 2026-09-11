@@ -1,6 +1,7 @@
 import { Box, Paper, Typography } from "@mui/material"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
+import type { Commit } from "../../core/types"
 import { useStore } from "../../store"
 import CommitRow, { GRID_COLUMNS } from "./CommitRow"
 
@@ -9,13 +10,19 @@ const HEADERS = ["", "", "Commit", "Author name", "Author email", "Author date",
 /** Estimated row height in pixels, used by the virtualizer before a row has been measured. */
 const ROW_HEIGHT = 41
 
+/** Props for `CommitTable`. */
+interface CommitTableProps {
+    /** The commits to display, already filtered. */
+    commits: Commit[]
+}
+
 /**
  * The virtualized commit table. Only the visible rows are mounted, so an import of several thousand commits stays responsive.
  *
+ * @param props Component props.
  * @returns The table.
  */
-export default function CommitTable() {
-    const commits = useStore((s) => s.current)
+export default function CommitTable({ commits }: CommitTableProps) {
     const originals = useStore((s) => s.originals)
     const selected = useStore((s) => s.selected)
     const toggleSelected = useStore((s) => s.toggleSelected)
@@ -27,8 +34,10 @@ export default function CommitTable() {
     const [lastClicked, setLastClicked] = useState<string | null>(null)
     const parentRef = useRef<HTMLDivElement>(null)
 
-    const selectedSet = new Set(selected)
-    const originalBySha = new Map(originals.map((c) => [c.sha, c]))
+    // useVirtualizer re-renders on every scroll frame, so rebuilding these unmemoized would be O(n) work
+    // over the whole commit list on every scroll tick.
+    const selectedSet = useMemo(() => new Set(selected), [selected])
+    const originalBySha = useMemo(() => new Map(originals.map((c) => [c.sha, c])), [originals])
 
     const virtualizer = useVirtualizer({
         count: commits.length,
