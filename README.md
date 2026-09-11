@@ -1,55 +1,68 @@
-# Git history editor
+# Git History Editor
 
-[![License](https://flat.badgen.net/github/license/bokub/git-history-editor?color=f49068)](https://raw.githubusercontent.com/bokub/git-history-editor/master/LICENSE)
+Edit the author, date, and message of your past git commits in the browser, then copy a script that applies the changes.
 
-**Git history editor** is an easy-to-use online tool hosted by Github Pages, intended to help you edit your past commits.
+**[Open the app](https://steve1316.github.io/git-history-editor-improved/)**
 
-Just type [`git.io/editor`](https://git.io/editor) to use it ⚡️
+Nothing is uploaded. Your commit data is parsed, edited, and turned into a script entirely in your browser.
 
-[![Git history editor](http://bit.ly/2eOyTGA)](https://git.io/editor)
+## What it does
 
-## Features
+1. **Import** - run one `git log` command and paste, drop, or load its output. There is no commit limit.
+2. **Edit** - change author names, emails, dates, and messages, one commit at a time or in bulk.
+3. **Export** - review a diff of everything that changed, then copy a `git filter-repo` command that applies it.
 
-- [x] Bulk edit mode
-- [x] Regular edit mode
-- [x] Edit author name / email
-- [x] Edit commit time / date
-- [x] Edit commit message
+### Features
 
-## How it works
+- Inline editing in a virtualised table that stays responsive on large histories
+- A date and time field you can both type into and pick from
+- Batch operations across any selection: set author, shift dates by an offset, spread dates evenly across a range, find and replace in messages
+- Global author replacement that also covers commits older than the ones you imported
+- Undo and redo with Ctrl+Z and Ctrl+Y
+- Your session is saved locally, so a refresh does not lose your work
+- Dark and light themes, following your system by default
 
-Editing your git history takes 3 main steps:
+### Two things this fixes from the original
 
-### Step 1: Import
+- **Commit bodies survive.** The original read only the subject line and its generated script replaced the whole message, silently discarding every commit body. This imports the full message.
+- **Timezones are preserved.** The original rendered every commit in your browser's timezone and wrote edits back as if they were local, which shifted timestamps for anyone working with commits authored elsewhere. Each commit now keeps its own UTC offset, with an optional toggle to view everything in your own timezone.
 
-In order to import information about past commits in any project, Git History Editor asks you the result of your `git log`.
+## Running the generated script
 
-Because this log is made to be read by a program, it is formatted using the `--pretty=format` option of `git log`, then encoded
-to `base64` to avoid problems with carriage returns or spaces.
+The default output uses [`git filter-repo`](https://github.com/newren/git-filter-repo), which you install with `pip install git-filter-repo`. A `git filter-branch` fallback is available for environments where you cannot install it.
 
-Only the last 100 commits are imported, because a really huge commit history could drastically slow down your browser, or even make it crash.
+Either way: **back up your repository first**. Rewriting history changes every commit hash from the earliest edit onwards, and if the branch is shared you will need to coordinate before force-pushing.
 
-The import command to run is the following:
+## Development
 
 ```bash
-git log -100 --pretty=format:"%H*#%an*#%ae*#%at*#%s" | base64 | tr -d "\n"
+yarn install
+yarn dev          # start the dev server
+yarn test         # run the unit tests
+yarn typecheck    # tsc --noEmit
+yarn lint         # eslint
+yarn format       # prettier --write
+yarn build        # typecheck and production build
 ```
 
-### Step 2: Edit
+TypeScript is pinned to the 5.x line. TypeScript 7's native compiler is not yet supported by
+`typescript-eslint`, so the project stays on 5.x until that lands.
 
-Git History Editor has a nice UI designed to let you edit what you want in each one of your past commits, or create a rule that will apply to multiple commits. [Just try it](https://git.io/editor).
+Use yarn classic (1.22). If corepack is active on your machine it may resolve `yarn` to Yarn 4,
+which will try to convert the project to Plug'n'Play - invoke the classic binary explicitly.
 
-### Step 3: Export
+### Layout
 
-When the `edit` step is finished, Git History Editor provides a script that you can run in order to apply the changes immediatly.
+- `src/core/` - pure TypeScript with no React and no DOM: log parsing, diffing, escaping, script generation, batch operations. All of the test suite lives here, because this is the code that rewrites real history.
+- `src/store/` - Zustand store with localStorage persistence and the undo history.
+- `src/components/` - MUI presentation, one folder per step.
 
-This script uses the `git filter-branch` command, which is the less painful way to rewrite a git branch history with precision.
+`src/core/` must not import from `src/store/` or `src/components/`, and must not import React. An ESLint rule enforces this.
 
-## Libraries used
+## Credits
 
-- [Vue.js](https://github.com/vuejs/vue)
-- [Materialize](https://github.com/Dogfalo/materialize)
-- [jQuery](https://github.com/jquery/jquery)
-- [Prism](https://github.com/PrismJS/prism)
-- [Jekyll](https://github.com/jekyll/jekyll)
-- [Sass](https://github.com/sass/sass)
+A rewrite of [bokub/git-history-editor](https://github.com/bokub/git-history-editor) by Boris K, which is licensed under Apache-2.0. This project keeps that licence.
+
+## Licence
+
+Apache-2.0. See [LICENSE](LICENSE).
