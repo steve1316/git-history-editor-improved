@@ -97,7 +97,9 @@ function parseRecord(record: string, index: number): { commit: Commit } | { erro
     const sha = fields[0]!
     if (!SHA_PATTERN.test(sha)) {
         return {
-            error: `Commit ${index + 1} starts with "${truncate(sha)}" where a commit hash was expected, so this input does not look like git log output. Paste the output of the exact git log command shown above.`,
+            error:
+                `Commit ${index + 1} starts with "${truncate(sha)}" where a commit hash was expected, so this input does not look like git log output. ` +
+                "Paste the output of the exact git log command shown above.",
         }
     }
 
