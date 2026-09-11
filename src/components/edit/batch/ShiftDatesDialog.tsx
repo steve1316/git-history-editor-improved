@@ -2,8 +2,20 @@ import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker"
 import { useState } from "react"
 import { shiftDates, spreadDates } from "../../../core/batch/shiftDates"
+import { formatOffset } from "../../../core/gitDate"
 import { useStore } from "../../../store"
 import type { BatchDialogProps } from "./types"
+
+/**
+ * Describe the viewer's current UTC offset. The two range pickers are read as instants in the viewer's zone rather than in each commit's own
+ * zone, which is the opposite of every other date surface in the app, so the fields have to say so.
+ *
+ * @returns A label such as `UTC-07:00`.
+ */
+function localZoneLabel(): string {
+    const offset = formatOffset(-new Date().getTimezoneOffset())
+    return `UTC${offset.slice(0, 3)}:${offset.slice(3)}`
+}
 
 /**
  * Moves the selected commits' author dates, either by a relative offset that preserves their spacing, or by spreading them evenly across a range.
@@ -24,6 +36,7 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
     const [end, setEnd] = useState<Date | null>(new Date())
 
     const rangeInvalid = tab === 1 && (!start || !end || end.getTime() < start.getTime())
+    const zoneHint = `Interpreted in your local time, ${localZoneLabel()}.`
 
     const apply = (): void => {
         if (tab === 0) {
@@ -55,7 +68,15 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
                 ) : (
                     <Stack spacing={2}>
                         <Alert severity="info">The earliest selected commit lands on the start, the latest on the end, and the rest are spaced evenly between them.</Alert>
-                        <DateTimePicker label="Start" value={start} onChange={setStart} format="yyyy-MM-dd HH:mm:ss" ampm={false} views={["year", "month", "day", "hours", "minutes", "seconds"]} />
+                        <DateTimePicker
+                            label="Start"
+                            value={start}
+                            onChange={setStart}
+                            format="yyyy-MM-dd HH:mm:ss"
+                            ampm={false}
+                            views={["year", "month", "day", "hours", "minutes", "seconds"]}
+                            slotProps={{ textField: { helperText: zoneHint } }}
+                        />
                         <DateTimePicker
                             label="End"
                             value={end}
@@ -63,7 +84,7 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
                             format="yyyy-MM-dd HH:mm:ss"
                             ampm={false}
                             views={["year", "month", "day", "hours", "minutes", "seconds"]}
-                            slotProps={{ textField: { error: rangeInvalid, helperText: rangeInvalid ? "The end must be after the start." : " " } }}
+                            slotProps={{ textField: { error: rangeInvalid, helperText: rangeInvalid ? "The end must be after the start." : zoneHint } }}
                         />
                     </Stack>
                 )}
