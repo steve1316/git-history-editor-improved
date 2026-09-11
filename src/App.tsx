@@ -4,6 +4,7 @@ import { AppBar, Alert, Box, Container, CssBaseline, IconButton, Step, StepButto
 import { LocalizationProvider } from "@mui/x-date-pickers"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import { useMemo } from "react"
+import EditStep from "./components/edit/EditStep"
 import ImportStep from "./components/import/ImportStep"
 import { useUndoRedoShortcuts } from "./hooks/useUndoRedoShortcuts"
 import { isPersistenceAvailable, useStore } from "./store"
@@ -61,7 +62,7 @@ export default function App() {
                         </Alert>
                     )}
 
-                    <Box>{step === 1 ? <ImportStep /> : step === 2 ? <Placeholder name="Edit" /> : <Placeholder name="Export" />}</Box>
+                    <Box>{step === 1 ? <ImportStep /> : step === 2 ? <EditStep /> : <Placeholder name="Export" />}</Box>
                 </Container>
             </LocalizationProvider>
         </ThemeProvider>
