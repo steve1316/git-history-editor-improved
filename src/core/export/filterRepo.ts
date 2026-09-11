@@ -25,6 +25,8 @@ export function generateFilterRepoScript(input: ExportInput): string {
     for (const commitChange of changeSet.commits) {
         const commit = currentBySha.get(commitChange.sha)
         if (!commit) {
+            // Unreachable: `sha` is never edited and `originals`/`current` are documented as the same length and
+            // order, so every `changeSet.commits` entry has a matching `current` commit under its original sha.
             continue
         }
         const fields = commitChange.changes.map((c) => c.field)

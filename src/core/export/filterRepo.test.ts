@@ -91,6 +91,20 @@ describe("generateFilterRepoScript", () => {
         expect(script).toContain('"message": b"Subject\\n\\nGHE_EOF\\n"')
     })
 
+    it("emits the callback as top-level statements, never wrapped in a def", () => {
+        const script = generateFilterRepoScript(withEdit(0, { authorName: "Jane R. Doe" }))
+        const match = /<<'([A-Z0-9_]+)'\n([\s\S]*?)\n\1\n/.exec(script)
+        expect(match).not.toBeNull()
+
+        const body = match![2]!
+        // git filter-repo wraps this body in its own def, so our own def would define a function it never calls.
+        expect(body).not.toMatch(/^\s*def\s/m)
+        // The executable statements must sit at column zero, or filter-repo's re-indentation produces invalid Python.
+        expect(body).toMatch(/^replacement = authors\.get\(commit\.author_email\)$/m)
+        expect(body).toMatch(/^change = changes\.get\(commit\.original_id\)$/m)
+        expect(body).toMatch(/^if change:$/m)
+    })
+
     it("produces pure printable ASCII even for a unicode message", () => {
         const script = generateFilterRepoScript(withEdit(1, { message: "Add caf\u00e9 menu\n" }))
         const body = script.split("\n").filter((l) => l.includes('"message"'))
