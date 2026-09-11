@@ -20,7 +20,7 @@
         "@mui/material": "9",
         "@mui/x-date-pickers": "9",
         "@tanstack/react-virtual": "^3.14.12",
-        "date-fns": "4",
+        "luxon": "^3.7.2",
         "react": "19",
         "react-dom": "19",
         "zundo": "^2.3.0",
@@ -28,6 +28,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@types/luxon": "^3.7.5",
         "@types/node": "^22.20.2",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",

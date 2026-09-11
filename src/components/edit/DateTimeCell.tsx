@@ -1,8 +1,9 @@
 import { Box, Typography } from "@mui/material"
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker"
+import type { DateTime } from "luxon"
 import { useState } from "react"
 import { formatDisplay, formatOffset } from "../../core/gitDate"
-import { fromLocalDate, toLocalDate, type DisplayMode } from "../../core/localDate"
+import { fromPickerValue, toPickerValue, type DisplayMode } from "../../core/localDate"
 import type { GitDate } from "../../core/types"
 import { useStore } from "../../store"
 
@@ -19,10 +20,8 @@ function formatForDisplayMode(value: GitDate, mode: DisplayMode): string {
     if (mode === "commit") {
         return formatDisplay(value)
     }
-    const d = toLocalDate(value, "local")
-    const pad = (n: number): string => String(n).padStart(2, "0")
-    const localOffsetMinutes = -d.getTimezoneOffset()
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${formatOffset(localOffsetMinutes)}`
+    const d = toPickerValue(value, "local")
+    return `${d.toFormat("yyyy-MM-dd HH:mm:ss")} ${formatOffset(d.offset)}`
 }
 
 /** Props for `DateTimeCell`. */
@@ -49,13 +48,13 @@ export default function DateTimeCell({ value, edited, onCommit }: DateTimeCellPr
     // MUI's picker is a controlled component once `value` is set: without an `onChange` handler that feeds
     // an updated value back in, `useControlledValue` discards every calendar click and typed keystroke, and
     // `onAccept` would fire with the value the picker opened with. `draft` is that missing piece of state.
-    const [draft, setDraft] = useState<Date | null>(null)
+    const [draft, setDraft] = useState<DateTime | null>(null)
 
     if (!editing) {
         return (
             <Box
                 onClick={() => {
-                    setDraft(toLocalDate(value, timezoneMode))
+                    setDraft(toPickerValue(value, timezoneMode))
                     setEditing(true)
                 }}
                 sx={{ cursor: "text", py: 0.5, minHeight: 28, whiteSpace: "nowrap", borderBottom: edited ? 2 : 0, borderColor: "warning.main" }}
@@ -82,7 +81,7 @@ export default function DateTimeCell({ value, edited, onCommit }: DateTimeCellPr
             onClose={() => setEditing(false)}
             onAccept={(next) => {
                 if (next) {
-                    onCommit(fromLocalDate(next, value, timezoneMode))
+                    onCommit(fromPickerValue(next, value, timezoneMode))
                 }
                 setEditing(false)
             }}

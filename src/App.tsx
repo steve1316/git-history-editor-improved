@@ -2,7 +2,7 @@ import DarkModeIcon from "@mui/icons-material/DarkMode"
 import LightModeIcon from "@mui/icons-material/LightMode"
 import { AppBar, Alert, Box, Container, CssBaseline, IconButton, Step, StepButton, Stepper, ThemeProvider, Toolbar, Tooltip, Typography, useMediaQuery } from "@mui/material"
 import { LocalizationProvider } from "@mui/x-date-pickers"
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
+import { AdapterLuxon } from "@mui/x-date-pickers/AdapterLuxon"
 import { useMemo } from "react"
 import EditStep from "./components/edit/EditStep"
 import ExportStep from "./components/export/ExportStep"
@@ -34,7 +34,7 @@ export default function App() {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <LocalizationProvider dateAdapter={AdapterLuxon}>
                 <AppBar position="static" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
                     <Toolbar>
                         <Typography variant="h6" component="h1" sx={{ flex: 1 }}>

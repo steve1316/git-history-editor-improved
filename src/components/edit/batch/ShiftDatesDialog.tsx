@@ -1,5 +1,6 @@
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Tab, Tabs, TextField } from "@mui/material"
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker"
+import { DateTime } from "luxon"
 import { useState } from "react"
 import { shiftDates, spreadDates } from "../../../core/batch/shiftDates"
 import { formatOffset } from "../../../core/gitDate"
@@ -13,7 +14,7 @@ import type { BatchDialogProps } from "./types"
  * @returns A label such as `UTC-07:00`.
  */
 function localZoneLabel(): string {
-    const offset = formatOffset(-new Date().getTimezoneOffset())
+    const offset = formatOffset(DateTime.now().offset)
     return `UTC${offset.slice(0, 3)}:${offset.slice(3)}`
 }
 
@@ -32,17 +33,17 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
     const [days, setDays] = useState(0)
     const [hours, setHours] = useState(0)
     const [minutes, setMinutes] = useState(0)
-    const [start, setStart] = useState<Date | null>(new Date())
-    const [end, setEnd] = useState<Date | null>(new Date())
+    const [start, setStart] = useState<DateTime | null>(DateTime.now())
+    const [end, setEnd] = useState<DateTime | null>(DateTime.now())
 
-    const rangeInvalid = tab === 1 && (!start || !end || end.getTime() < start.getTime())
+    const rangeInvalid = tab === 1 && (!start || !end || !start.isValid || !end.isValid || end.toMillis() < start.toMillis())
     const zoneHint = `Interpreted in your local time, ${localZoneLabel()}.`
 
     const apply = (): void => {
         if (tab === 0) {
             replaceCommits(shiftDates(commits, selected, { days, hours, minutes }))
         } else if (start && end && !rangeInvalid) {
-            replaceCommits(spreadDates(commits, selected, Math.round(start.getTime() / 1000), Math.round(end.getTime() / 1000)))
+            replaceCommits(spreadDates(commits, selected, Math.round(start.toMillis() / 1000), Math.round(end.toMillis() / 1000)))
         }
         onClose()
     }

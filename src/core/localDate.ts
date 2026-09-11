@@ -1,60 +1,50 @@
-import { fromZonedParts, toZonedParts } from "./gitDate"
+import { DateTime, FixedOffsetZone } from "luxon"
+import { fromZonedParts } from "./gitDate"
 import type { GitDate } from "./types"
 
 /** Whether timestamps are shown in each commit's own zone or in the viewer's. Mirrors the store's `TimezoneMode`. */
 export type DisplayMode = "commit" | "local"
 
 /**
- * Build a `Date` suitable for handing to a date picker. In commit mode the returned `Date` is a deliberate fiction: its local wall-clock reads
- * the same as the commit's wall-clock in the commit's own zone, so the picker shows what `git log` would show rather than what the viewer's
- * timezone would.
+ * Build the value to hand a date picker. In commit mode the value is carried in a fixed-offset zone built from the commit's own
+ * `offsetMinutes`, so the picker displays exactly the wall-clock time `git log` would show, whatever zone the viewer is in.
  *
- * The fiction has one limit the viewer's timezone imposes: a wall-clock time inside a DST spring-forward gap does not exist locally, so no
- * `Date` can read it back. `fromLocalDate` is what keeps that from shifting the commit.
+ * A fixed-offset zone has no daylight saving rules, so there is no spring-forward gap and every wall-clock time it can name exists.
+ * That is what a host-zone `Date` could not promise: a commit whose own wall clock fell inside the viewer's gap had no `Date` that
+ * read it back, and the runtime silently normalised the display an hour forward.
  *
  * @param date The stored instant and its original offset.
  * @param mode Whether to render in the commit's zone or the viewer's.
- * @returns A `Date` the picker can edit.
+ * @returns The `DateTime` the picker can edit.
  */
-export function toLocalDate(date: GitDate, mode: DisplayMode): Date {
+export function toPickerValue(date: GitDate, mode: DisplayMode): DateTime {
+    const millis = date.epochSeconds * 1000
     if (mode === "local") {
-        return new Date(date.epochSeconds * 1000)
+        return DateTime.fromMillis(millis)
     }
-    const p = toZonedParts(date)
-    const local = new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
-    // The two-digit-year constructor argument is remapped onto 1900-1999, so a year before 100 has to be set back explicitly.
-    if (local.getFullYear() !== p.year) {
-        local.setFullYear(p.year)
-    }
-    return local
+    return DateTime.fromMillis(millis, { zone: FixedOffsetZone.instance(date.offsetMinutes) })
 }
 
 /**
- * Convert a picker's `Date` back into a stored instant, keeping the commit's original offset.
+ * Convert a picker's `DateTime` back into a stored instant, keeping the commit's original offset.
  *
- * Accepting the picker without editing it is always a no-op, even when the commit's wall-clock time does not exist in the viewer's zone.
- * Reading the fields back off such a `Date` would otherwise return the time the runtime normalised it to and rewrite the commit by the size
- * of the DST gap - the exact class of silent timestamp damage this tool exists to avoid.
+ * In commit mode the picker's value is already in the commit's own offset, so its wall-clock fields are read straight back. The
+ * conversion is exact in both directions: opening the picker and accepting it without an edit cannot move a commit.
  *
- * @param value The `Date` the picker produced.
+ * @param value The `DateTime` the picker produced.
  * @param original The commit's stored date, which supplies the offset to preserve.
- * @param mode The mode `toLocalDate` was called with.
+ * @param mode The mode `toPickerValue` was called with.
  * @returns The instant to store.
  */
-export function fromLocalDate(value: Date, original: GitDate, mode: DisplayMode): GitDate {
-    if (value.getTime() === toLocalDate(original, mode).getTime()) {
+export function fromPickerValue(value: DateTime, original: GitDate, mode: DisplayMode): GitDate {
+    // A half-typed or nonsensical field produces an invalid `DateTime` whose fields are all `NaN`. Storing that would write a
+    // garbage timestamp into the generated script, so the commit is left exactly as it was.
+    if (!value.isValid) {
         return original
     }
     if (mode === "local") {
-        return { epochSeconds: Math.round(value.getTime() / 1000), offsetMinutes: original.offsetMinutes }
+        return { epochSeconds: Math.round(value.toMillis() / 1000), offsetMinutes: original.offsetMinutes }
     }
-    const parts = {
-        year: value.getFullYear(),
-        month: value.getMonth() + 1,
-        day: value.getDate(),
-        hour: value.getHours(),
-        minute: value.getMinutes(),
-        second: value.getSeconds(),
-    }
+    const parts = { year: value.year, month: value.month, day: value.day, hour: value.hour, minute: value.minute, second: value.second }
     return fromZonedParts(parts, original.offsetMinutes)
 }
