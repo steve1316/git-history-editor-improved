@@ -66,7 +66,8 @@ export function formatGitDate(date: GitDate): string {
 }
 
 /**
- * Render an instant as the wall-clock time an observer in the commit's own timezone would have seen. This deliberately ignores the host machine's timezone.
+ * Render an instant as the wall-clock time an observer in the commit's own timezone would have seen. This deliberately
+ * ignores the host machine's timezone.
  *
  * @param date The instant and its offset.
  * @returns The wall-clock parts in the commit's own zone.
@@ -93,4 +94,16 @@ export function toZonedParts(date: GitDate): ZonedParts {
 export function fromZonedParts(parts: ZonedParts, offsetMinutes: number): GitDate {
     const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)
     return { epochSeconds: asUtc / 1000 - offsetMinutes * 60, offsetMinutes }
+}
+
+/**
+ * Render an instant for display and editing, in the commit's own timezone.
+ *
+ * @param date The instant and its offset.
+ * @returns A string such as `2026-03-04 14:30:00 +0900`.
+ */
+export function formatDisplay(date: GitDate): string {
+    const p = toZonedParts(date)
+    const pad = (n: number): string => String(n).padStart(2, "0")
+    return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)} ${formatOffset(date.offsetMinutes)}`
 }

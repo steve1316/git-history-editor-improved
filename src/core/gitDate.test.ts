@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatGitDate, formatOffset, fromZonedParts, parseIsoWithOffset, toZonedParts } from "./gitDate"
+import { formatDisplay, formatGitDate, formatOffset, fromZonedParts, parseIsoWithOffset, toZonedParts } from "./gitDate"
 
 describe("parseIsoWithOffset", () => {
     it("reads a positive offset", () => {
@@ -55,5 +55,17 @@ describe("toZonedParts and fromZonedParts", () => {
         const parts = toZonedParts(original)
         expect(parts).toEqual({ year: 2026, month: 3, day: 3, hour: 19, minute: 15, second: 0 })
         expect(fromZonedParts(parts, -420)).toEqual(original)
+    })
+
+    it("round-trips at a zero offset", () => {
+        const utc = { epochSeconds: Date.UTC(2026, 2, 4, 5, 30, 0) / 1000, offsetMinutes: 0 }
+        expect(toZonedParts(utc)).toEqual({ year: 2026, month: 3, day: 4, hour: 5, minute: 30, second: 0 })
+        expect(fromZonedParts(toZonedParts(utc), 0)).toEqual(utc)
+    })
+})
+
+describe("formatDisplay", () => {
+    it("renders in the commit's own zone with the offset appended", () => {
+        expect(formatDisplay({ epochSeconds: Date.UTC(2026, 2, 4, 5, 30, 0) / 1000, offsetMinutes: 540 })).toBe("2026-03-04 14:30:00 +0900")
     })
 })
