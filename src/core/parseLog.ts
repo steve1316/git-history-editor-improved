@@ -2,10 +2,10 @@ import { parseIsoWithOffset } from "./gitDate"
 import type { Commit, ParseResult } from "./types"
 
 /** Field separator emitted by the import command, U+001F. */
-export const UNIT_SEPARATOR = ""
+export const UNIT_SEPARATOR = "\\u001f"
 
 /** Record separator emitted by the import command, U+001E. */
-export const RECORD_SEPARATOR = ""
+export const RECORD_SEPARATOR = "\\u001e"
 
 /** Number of fields the import command emits per commit. */
 const FIELD_COUNT = 8
