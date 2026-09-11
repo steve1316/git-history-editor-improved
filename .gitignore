@@ -1,5 +1,11 @@
-css/*.css
-css/*.css.map
-_site/
+node_modules/
+dist/
+.superpowers/
+docs/superpowers/
 .idea/
-.jekyll-cache
+.vscode/settings.local.json
+*.local
+
+# Local-only, never committed
+CLAUDE.md
+PROJECT.md
