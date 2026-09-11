@@ -108,3 +108,23 @@ describe("parseLog", () => {
         }
     })
 })
+
+describe("separator constants", () => {
+    it("are the single control characters git emits, not their escape text", () => {
+        expect(UNIT_SEPARATOR).toHaveLength(1)
+        expect(UNIT_SEPARATOR.charCodeAt(0)).toBe(0x1f)
+        expect(RECORD_SEPARATOR).toHaveLength(1)
+        expect(RECORD_SEPARATOR.charCodeAt(0)).toBe(0x1e)
+    })
+
+    it("parses a record built with real control characters rather than the shared constants", () => {
+        const us = String.fromCharCode(0x1f)
+        const rs = String.fromCharCode(0x1e)
+        const record = ["a".repeat(40), "Jane Doe", "jane@example.com", "2026-03-04T14:30:00+09:00", "Jane Doe", "jane@example.com", "2026-03-04T14:30:00+09:00", "Subject\n"].join(us) + rs
+        const result = parseLog(record)
+        expect(result.ok).toBe(true)
+        if (result.ok) {
+            expect(result.commits[0]!.authorName).toBe("Jane Doe")
+        }
+    })
+})
