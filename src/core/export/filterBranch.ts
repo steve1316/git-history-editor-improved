@@ -32,7 +32,7 @@ export function generateFilterBranchScript(input: ExportInput): string {
         const fields = commitChange.changes.map((c) => c.field)
         const exports = fields.flatMap((f) => renderExports(commit, f, input.updateCommitter))
         if (exports.length > 0) {
-            envCases.push(`${commit.sha})\n${exports.map((e) => `    ${e}`).join("\n")}\n    ;;`)
+            envCases.push(`${shellSingleQuote(commit.sha)})\n${exports.map((e) => `    ${e}`).join("\n")}\n    ;;`)
         }
         if (fields.includes("message")) {
             messages.push(commit.message)
@@ -46,7 +46,7 @@ export function generateFilterBranchScript(input: ExportInput): string {
             continue
         }
         const body = commit.message.replace(/\n$/, "")
-        msgCases.push(`${commit.sha})\ncat <<'${msgDelimiter}'\n${body}\n${msgDelimiter}\n;;`)
+        msgCases.push(`${shellSingleQuote(commit.sha)})\ncat <<'${msgDelimiter}'\n${body}\n${msgDelimiter}\n;;`)
     }
 
     const replacementCase = renderAuthorReplacements(changeSet.authorReplacements, input.updateCommitter)

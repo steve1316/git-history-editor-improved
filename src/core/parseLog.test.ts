@@ -98,6 +98,37 @@ describe("parseLog", () => {
         }
     })
 
+    it.each([
+        ["shell metacharacters", "*) touch /tmp/PWNED ;; #"],
+        ["a closing parenthesis", "a1b2c3d4e5f6)"],
+        ["a bare glob", "*"],
+        ["a space", "a1b2c3d e5f6071"],
+        ["non-hex characters", "zzzzzzzzzzzzzzzz"],
+        ["too few characters", "a1b2c3"],
+    ])("rejects a record whose sha contains %s", (_label, sha) => {
+        const result = parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha }]))
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+            expect(result.recordIndex).toBe(0)
+            expect(result.error).toContain("Commit 1")
+            expect(result.error).toContain("does not look like git log output")
+        }
+    })
+
+    it("reports which record carries the bad sha", () => {
+        const result = parseLog(buildLogText([FIXTURE_COMMITS[0]!, { ...FIXTURE_COMMITS[1]!, sha: "*" }]))
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+            expect(result.recordIndex).toBe(1)
+            expect(result.error).toContain("Commit 2")
+        }
+    })
+
+    it("accepts an abbreviated and an uppercase sha", () => {
+        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "a1b2c3d" }])).ok).toBe(true)
+        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "A1B2C3D4E5F6" }])).ok).toBe(true)
+    })
+
     it("reports the index when a timestamp is unreadable", () => {
         const broken = buildLogText([FIXTURE_COMMITS[0]!]).replace("2026-03-04T14:30:00+09:00", "not-a-date")
         const result = parseLog(broken)

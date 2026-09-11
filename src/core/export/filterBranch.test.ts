@@ -30,8 +30,26 @@ describe("generateFilterBranchScript", () => {
     it("matches commits with a case statement rather than a chain of elif", () => {
         const script = generateFilterBranchScript(withEdit(0, { authorName: "Jane R. Doe" }))
         expect(script).toContain('case "$GIT_COMMIT" in')
-        expect(script).toContain(`${FIXTURE_COMMITS[0]!.sha})`)
+        expect(script).toContain(`'${FIXTURE_COMMITS[0]!.sha}')`)
         expect(script).not.toContain("elif")
+    })
+
+    // parseLog now rejects a sha like this, so the fixture is built directly rather than parsed: the quoting here is the
+    // second layer of the defence, and it has to hold even if a hostile commit reaches the generator some other way.
+    it("quotes both case patterns so a sha carrying shell metacharacters cannot terminate the pattern", () => {
+        const hostile = "*) touch /tmp/PWNED ;; #"
+        const original: Commit = { ...FIXTURE_COMMITS[0]!, sha: hostile }
+        const current: Commit = { ...original, authorName: "Mallory", message: "Rewritten subject\n" }
+        const script = generateFilterBranchScript({ originals: [original], current: [current], authorReplacements: [], updateCommitter: true })
+
+        // A bare `)` after the sha would close the pattern and leave the rest of the sha as a command list.
+        expect(script).not.toContain(`${hostile})`)
+        // Both the env-filter case and the msg-filter case have to be quoted, so the quoted pattern appears exactly twice.
+        expect(script.split(`'${hostile}')`)).toHaveLength(3)
+        // Every line carrying the hostile text is a whole quoted case pattern, so none of it can be read as shell syntax.
+        for (const line of script.split("\n").filter((l) => l.includes("touch /tmp/PWNED"))) {
+            expect(line).toBe(`'${hostile}')`)
+        }
     })
 
     it("exports both author and committer identity when that option is on", () => {

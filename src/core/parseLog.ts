@@ -11,6 +11,13 @@ export const RECORD_SEPARATOR = "\u001e"
 const FIELD_COUNT = 8
 
 /**
+ * Shape of a git object name. Abbreviated hashes are as short as 7 characters and SHA-256 object names are 64, so anything outside that
+ * range, or carrying a character that is not hex, did not come from `%H`. The generated scripts interpolate this value into shell and
+ * Python source, so it is validated here rather than trusted.
+ */
+const SHA_PATTERN = /^[0-9a-f]{7,64}$/i
+
+/**
  * Turn pasted, dropped, or base64-encoded `git log` output into commits. Accepts
  * the encoded and un-encoded forms interchangeably.
  *
@@ -87,6 +94,13 @@ function parseRecord(record: string, index: number): { commit: Commit } | { erro
         }
     }
 
+    const sha = fields[0]!
+    if (!SHA_PATTERN.test(sha)) {
+        return {
+            error: `Commit ${index + 1} starts with "${truncate(sha)}" where a commit hash was expected, so this input does not look like git log output. Paste the output of the exact git log command shown above.`,
+        }
+    }
+
     const authored = parseIsoWithOffset(fields[3]!)
     const committed = parseIsoWithOffset(fields[6]!)
     if (!authored || !committed) {
@@ -97,7 +111,7 @@ function parseRecord(record: string, index: number): { commit: Commit } | { erro
 
     return {
         commit: {
-            sha: fields[0]!,
+            sha,
             authorName: fields[1]!,
             authorEmail: fields[2]!,
             authored,
@@ -107,4 +121,15 @@ function parseRecord(record: string, index: number): { commit: Commit } | { erro
             message: fields[7]!,
         },
     }
+}
+
+/**
+ * Shorten a value for inclusion in an error message, so a large paste cannot flood the UI.
+ *
+ * @param value The offending field text.
+ * @returns The value, truncated with an ellipsis when it is long.
+ */
+function truncate(value: string): string {
+    const flat = value.replace(/\s+/g, " ")
+    return flat.length > 20 ? `${flat.slice(0, 20)}...` : flat
 }
