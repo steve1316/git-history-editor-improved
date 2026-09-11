@@ -80,19 +80,36 @@ describe("selection slice", () => {
     })
 
     it("selects an inclusive range in display order", () => {
-        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha)
+        const order = FIXTURE_COMMITS.map((c) => c.sha)
+        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha, order)
         expect(useStore.getState().selected).toEqual(FIXTURE_COMMITS.map((c) => c.sha))
     })
 
     it("selects the same range when the endpoints are given in reverse", () => {
-        useStore.getState().selectRange(FIXTURE_COMMITS[2]!.sha, FIXTURE_COMMITS[0]!.sha)
+        const order = FIXTURE_COMMITS.map((c) => c.sha)
+        useStore.getState().selectRange(FIXTURE_COMMITS[2]!.sha, FIXTURE_COMMITS[0]!.sha, order)
         expect(useStore.getState().selected).toEqual(FIXTURE_COMMITS.map((c) => c.sha))
     })
 
     it("adds a range to an existing selection without duplicating", () => {
+        const order = FIXTURE_COMMITS.map((c) => c.sha)
         useStore.getState().toggleSelected(FIXTURE_COMMITS[0]!.sha)
-        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[1]!.sha)
+        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[1]!.sha, order)
         expect(useStore.getState().selected).toEqual([FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[1]!.sha])
+    })
+
+    it("selects only the visible endpoints when the order given is a filtered view", () => {
+        // A visible order of just the 1st and 3rd fixture commits, as CommitTable would pass while filtered.
+        const visibleOrder = [FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha]
+        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha, visibleOrder)
+        expect(useStore.getState().selected).toEqual([FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha])
+    })
+
+    it("preserves a previously selected commit that is now filtered out of the visible order", () => {
+        useStore.getState().toggleSelected(FIXTURE_COMMITS[1]!.sha)
+        const visibleOrder = [FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha]
+        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha, visibleOrder)
+        expect(useStore.getState().selected).toEqual(FIXTURE_COMMITS.map((c) => c.sha))
     })
 
     it("drops selected shas that are no longer present after a re-import", () => {

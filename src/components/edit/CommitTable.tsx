@@ -48,7 +48,11 @@ export default function CommitTable({ commits }: CommitTableProps) {
 
     const onToggle = (sha: string, shiftKey: boolean): void => {
         if (shiftKey && lastClicked) {
-            selectRange(lastClicked, sha)
+            selectRange(
+                lastClicked,
+                sha,
+                commits.map((c) => c.sha),
+            )
         } else {
             toggleSelected(sha)
         }

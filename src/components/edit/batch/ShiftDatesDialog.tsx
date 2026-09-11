@@ -23,10 +23,12 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
     const [start, setStart] = useState<Date | null>(new Date())
     const [end, setEnd] = useState<Date | null>(new Date())
 
+    const rangeInvalid = tab === 1 && (!start || !end || end.getTime() < start.getTime())
+
     const apply = (): void => {
         if (tab === 0) {
             replaceCommits(shiftDates(commits, selected, { days, hours, minutes }))
-        } else if (start && end) {
+        } else if (start && end && !rangeInvalid) {
             replaceCommits(spreadDates(commits, selected, Math.round(start.getTime() / 1000), Math.round(end.getTime() / 1000)))
         }
         onClose()
@@ -54,13 +56,21 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
                     <Stack spacing={2}>
                         <Alert severity="info">The earliest selected commit lands on the start, the latest on the end, and the rest are spaced evenly between them.</Alert>
                         <DateTimePicker label="Start" value={start} onChange={setStart} format="yyyy-MM-dd HH:mm:ss" ampm={false} views={["year", "month", "day", "hours", "minutes", "seconds"]} />
-                        <DateTimePicker label="End" value={end} onChange={setEnd} format="yyyy-MM-dd HH:mm:ss" ampm={false} views={["year", "month", "day", "hours", "minutes", "seconds"]} />
+                        <DateTimePicker
+                            label="End"
+                            value={end}
+                            onChange={setEnd}
+                            format="yyyy-MM-dd HH:mm:ss"
+                            ampm={false}
+                            views={["year", "month", "day", "hours", "minutes", "seconds"]}
+                            slotProps={{ textField: { error: rangeInvalid, helperText: rangeInvalid ? "The end must be after the start." : " " } }}
+                        />
                     </Stack>
                 )}
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
-                <Button variant="contained" onClick={apply} disabled={tab === 0 && days === 0 && hours === 0 && minutes === 0}>
+                <Button variant="contained" onClick={apply} disabled={(tab === 0 && days === 0 && hours === 0 && minutes === 0) || rangeInvalid}>
                     Apply
                 </Button>
             </DialogActions>

@@ -6,8 +6,8 @@ export interface SelectionSlice {
     selected: string[]
     /** Add or remove one SHA. */
     toggleSelected: (sha: string) => void
-    /** Add every commit between two SHAs inclusive, in display order, regardless of which endpoint came first. */
-    selectRange: (fromSha: string, toSha: string) => void
+    /** Add every commit between two SHAs inclusive, in the given display order, regardless of which endpoint came first. */
+    selectRange: (fromSha: string, toSha: string, order: string[]) => void
     /** Replace the selection outright. */
     setSelected: (shas: string[]) => void
     /** Deselect everything. */
@@ -36,8 +36,7 @@ export function createSelectionSlice(set: Setter, get: Getter): SelectionSlice {
             set({ selected: selected.includes(sha) ? selected.filter((s) => s !== sha) : [...selected, sha] })
         },
 
-        selectRange: (fromSha, toSha) => {
-            const order = get().current.map((c) => c.sha)
+        selectRange: (fromSha, toSha, order) => {
             const a = order.indexOf(fromSha)
             const b = order.indexOf(toSha)
             if (a < 0 || b < 0) {
@@ -45,7 +44,10 @@ export function createSelectionSlice(set: Setter, get: Getter): SelectionSlice {
             }
             const range = order.slice(Math.min(a, b), Math.max(a, b) + 1)
             const merged = new Set([...get().selected, ...range])
-            set({ selected: order.filter((sha) => merged.has(sha)) })
+            // Order by the full commit list, not just `order` (which may be a filtered view), so a shift-click
+            // made while filtered keeps any previously selected commit that is currently hidden.
+            const fullOrder = get().current.map((c) => c.sha)
+            set({ selected: fullOrder.filter((sha) => merged.has(sha)) })
         },
 
         setSelected: (shas) => set({ selected: shas }),
