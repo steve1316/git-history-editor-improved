@@ -21,7 +21,7 @@ export interface CommitsSlice {
     resetCommit: (sha: string) => void
     /** Revert every commit and drop all author substitutions. */
     resetAll: () => void
-    /** Discard the imported commits, edits, and selection, and return to the Import step. User preferences (theme, timezone mode, export options) deliberately survive. */
+    /** Discard the imported commits, edits, and selection, and return to the Import step. User preferences deliberately survive. */
     clearSession: () => void
 }
 
@@ -60,7 +60,7 @@ export function createCommitsSlice(set: Setter, get: Getter): CommitsSlice {
             set({ current: get().current.map((c) => (c.sha === sha ? original : c)) })
         },
 
-        resetAll: () => set({ current: get().originals, authorReplacements: [] }),
+        resetAll: () => set({ current: [...get().originals], authorReplacements: [] }),
 
         clearSession: () => set({ originals: [], current: [], authorReplacements: [], selected: [], step: 1 }),
     }

@@ -148,3 +148,23 @@ describe("session slice", () => {
         expect(slice.exportFormat).toBe("filter-repo")
     })
 })
+
+describe("persistence", () => {
+    it("persists session state but never the undo history", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+
+        const raw = localStorage.getItem("git-history-editor-improved")
+        expect(raw).not.toBeNull()
+        // Nesting guard: persist must wrap temporal. Swapped, the history lands in storage and grows without bound.
+        expect(raw).not.toContain("pastStates")
+        expect(raw).not.toContain("futureStates")
+
+        const persisted = JSON.parse(raw!).state
+        expect(Object.keys(persisted).sort()).toEqual(["authorReplacements", "current", "exportFormat", "originals", "selected", "step", "themeMode", "timezoneMode", "updateCommitter"])
+        // The edit itself must be in the persisted copy, or persistence is not doing its job.
+        expect(persisted.current[0].authorName).toBe("Edited")
+        // And the undo stack must still hold the edit in memory.
+        expect(useStore.temporal.getState().pastStates.length).toBeGreaterThan(0)
+    })
+})

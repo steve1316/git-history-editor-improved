@@ -12,8 +12,8 @@ export function isPersistenceAvailable(): boolean {
 }
 
 /**
- * A localStorage adapter that degrades instead of throwing. Private browsing, blocked site data, and an exceeded quota all surface as exceptions, and none of them
- * should take the app down.
+ * A localStorage adapter that degrades instead of throwing. Private browsing, blocked site data, and an exceeded quota all
+ * surface as exceptions, and none of them should take the app down.
  */
 export const guardedStorage: StateStorage = {
     getItem: (name) => {
