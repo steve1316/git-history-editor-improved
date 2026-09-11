@@ -29,7 +29,17 @@ export default function ImportCommandBlock() {
             </Box>
             <Box sx={{ display: "flex", gap: 2, alignItems: "center", mt: 1.5 }}>
                 <FormControlLabel control={<Switch size="small" checked={limited} onChange={(e) => setLimited(e.target.checked)} />} label="Limit the number of commits" />
-                {limited && <TextField size="small" type="number" label="Commits" value={limit} onChange={(e) => setLimit(Math.max(1, Number(e.target.value) || 1))} sx={{ width: 120 }} />}
+                {limited && (
+                    <TextField
+                        size="small"
+                        type="number"
+                        label="Commits"
+                        value={limit}
+                        onChange={(e) => setLimit(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                        slotProps={{ htmlInput: { min: 1, step: 1 } }}
+                        sx={{ width: 120 }}
+                    />
+                )}
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 The output is base64-encoded so that newlines and spaces in commit messages survive the trip through your clipboard. Nothing leaves your browser.

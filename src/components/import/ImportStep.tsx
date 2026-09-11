@@ -29,13 +29,19 @@ export default function ImportStep() {
     const onDrop = async (event: DragEvent<HTMLDivElement>): Promise<void> => {
         event.preventDefault()
         setDragging(false)
+
         const file = event.dataTransfer.files[0]
         if (!file) {
             return
         }
-        const content = await file.text()
-        setText(content)
-        runImport(content)
+
+        try {
+            const content = await file.text()
+            setText(content)
+            runImport(content)
+        } catch {
+            setError("That file could not be read. Try opening it and pasting its contents instead.")
+        }
     }
 
     return (
