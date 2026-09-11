@@ -11,11 +11,18 @@ export const RECORD_SEPARATOR = "\u001e"
 const FIELD_COUNT = 8
 
 /**
- * Shape of a git object name. Abbreviated hashes are as short as 7 characters and SHA-256 object names are 64, so anything outside that
- * range, or carrying a character that is not hex, did not come from `%H`. The generated scripts interpolate this value into shell and
- * Python source, so it is validated here rather than trusted.
+ * Shape of a git object name. The import command uses `%H`, which always emits a full object name: 40 hex characters for SHA-1 and 64 for
+ * SHA-256. Anything else did not come from `%H`. The generated scripts interpolate this value into shell and Python source, so it is
+ * validated here rather than trusted.
  */
-const SHA_PATTERN = /^[0-9a-f]{7,64}$/i
+const SHA_PATTERN = /^([0-9a-f]{40}|[0-9a-f]{64})$/i
+
+/**
+ * Hex, but shorter than any full object name. Such a value is real git output from `%h` rather than junk, and it is rejected for a different
+ * reason: it would import cleanly and then never match `GIT_COMMIT` or filter-repo's `commit.original_id`, both of which are always full
+ * object names, so the generated script would run to completion and rewrite nothing.
+ */
+const ABBREVIATED_SHA_PATTERN = /^[0-9a-f]{1,39}$/i
 
 /**
  * Turn pasted, dropped, or base64-encoded `git log` output into commits. Accepts
@@ -96,11 +103,7 @@ function parseRecord(record: string, index: number): { commit: Commit } | { erro
 
     const sha = fields[0]!
     if (!SHA_PATTERN.test(sha)) {
-        return {
-            error:
-                `Commit ${index + 1} starts with "${truncate(sha)}" where a commit hash was expected, so this input does not look like git log output. ` +
-                "Paste the output of the exact git log command shown above.",
-        }
+        return { error: shaError(sha, index) }
     }
 
     const authored = parseIsoWithOffset(fields[3]!)
@@ -123,6 +126,27 @@ function parseRecord(record: string, index: number): { commit: Commit } | { erro
             message: fields[7]!,
         },
     }
+}
+
+/**
+ * Build the rejection message for a first field that was not a full commit hash. An abbreviated hash gets its own wording, because the input
+ * really is git log output and telling the user otherwise would send them looking for the wrong problem.
+ *
+ * @param sha The offending field text.
+ * @param index Zero-based record index.
+ * @returns The message to show.
+ */
+function shaError(sha: string, index: number): string {
+    if (ABBREVIATED_SHA_PATTERN.test(sha)) {
+        return (
+            `Commit ${index + 1} starts with "${truncate(sha)}", which is a shortened commit hash rather than a full one. The script has to match each commit by its full hash, ` +
+            "so paste the output of the exact git log command shown above, which uses %H rather than %h."
+        )
+    }
+    return (
+        `Commit ${index + 1} starts with "${truncate(sha)}" where a commit hash was expected, so this input does not look like git log output. ` +
+        "Paste the output of the exact git log command shown above."
+    )
 }
 
 /**

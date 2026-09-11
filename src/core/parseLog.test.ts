@@ -103,8 +103,7 @@ describe("parseLog", () => {
         ["a closing parenthesis", "a1b2c3d4e5f6)"],
         ["a bare glob", "*"],
         ["a space", "a1b2c3d e5f6071"],
-        ["non-hex characters", "zzzzzzzzzzzzzzzz"],
-        ["too few characters", "a1b2c3"],
+        ["non-hex characters", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"],
     ])("rejects a record whose sha contains %s", (_label, sha) => {
         const result = parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha }]))
         expect(result.ok).toBe(false)
@@ -124,9 +123,30 @@ describe("parseLog", () => {
         }
     })
 
-    it("accepts an abbreviated and an uppercase sha", () => {
-        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "a1b2c3d" }])).ok).toBe(true)
-        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "A1B2C3D4E5F6" }])).ok).toBe(true)
+    it("accepts a full SHA-1 object name in either case, and a full SHA-256 one", () => {
+        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "a".repeat(40) }])).ok).toBe(true)
+        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "A1B2C3D4E5F6".repeat(3) + "1234" }])).ok).toBe(true)
+        expect(parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha: "0123456789abcdef".repeat(4) }])).ok).toBe(true)
+    })
+
+    // An abbreviated hash imports cleanly and then matches nothing, because `GIT_COMMIT` and filter-repo's `commit.original_id`
+    // are always full object names. The script would run to completion and rewrite none of the history it was asked to rewrite.
+    it.each([
+        ["the 7-character hash git abbreviates to by default", "a1b2c3d"],
+        ["a longer abbreviation", "a1b2c3d4e5f6"],
+        ["an uppercase abbreviation", "A1B2C3D4E5F6"],
+        ["one character short of a full SHA-1 name", "a".repeat(39)],
+    ])("rejects %s", (_label, sha) => {
+        const result = parseLog(buildLogText([{ ...FIXTURE_COMMITS[0]!, sha }]))
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+            expect(result.recordIndex).toBe(0)
+            expect(result.error).toContain("Commit 1")
+            expect(result.error).toContain("shortened commit hash")
+            expect(result.error).toContain("%H rather than %h")
+            // The input really is git log output here, so the message must not send the user looking for the wrong problem.
+            expect(result.error).not.toContain("does not look like git log output")
+        }
     })
 
     it("reports the index when a timestamp is unreadable", () => {
