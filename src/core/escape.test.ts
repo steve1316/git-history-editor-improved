@@ -34,6 +34,17 @@ describe("pythonBytes", () => {
         const result = pythonBytes("mixed \u00e9\u4e2d text")
         expect(/^[\x20-\x7e]*$/.test(result)).toBe(true)
     })
+
+    it("escapes an astral-plane character as its four UTF-8 bytes", () => {
+        expect(pythonBytes("\u{1f600}")).toBe('b"\\xf0\\x9f\\x98\\x80"')
+    })
+
+    it("emits pure printable ASCII for any input", () => {
+        for (let i = 0; i < 2000; i++) {
+            const input = Array.from({ length: 8 }, () => String.fromCodePoint(1 + Math.floor(Math.random() * 0x2fffe))).join("")
+            expect(pythonBytes(input)).toMatch(/^b"[\x20-\x7e]*"$/)
+        }
+    })
 })
 
 describe("chooseHeredocDelimiter", () => {
