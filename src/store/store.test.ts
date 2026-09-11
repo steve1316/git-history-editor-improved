@@ -1,0 +1,150 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { FIXTURE_COMMITS } from "../core/testFixtures"
+import { useStore } from "./index"
+import { createSessionSlice } from "./sessionSlice"
+
+beforeEach(() => {
+    const backing = new Map<string, string>()
+    vi.stubGlobal("localStorage", {
+        getItem: (k: string) => backing.get(k) ?? null,
+        setItem: (k: string, v: string) => void backing.set(k, v),
+        removeItem: (k: string) => void backing.delete(k),
+    })
+    useStore.getState().clearSession()
+    useStore.temporal.getState().clear()
+})
+
+describe("commits slice", () => {
+    it("stores imported commits as both the original and the current copy", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        const state = useStore.getState()
+        expect(state.originals).toEqual(FIXTURE_COMMITS)
+        expect(state.current).toEqual(FIXTURE_COMMITS)
+        expect(state.step).toBe(2)
+    })
+
+    it("edits one commit without touching the originals", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+        expect(useStore.getState().current[0]!.authorName).toBe("Edited")
+        expect(useStore.getState().originals[0]!.authorName).toBe("Jane Doe")
+    })
+
+    it("resets one commit back to its imported value", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+        useStore.getState().resetCommit(FIXTURE_COMMITS[0]!.sha)
+        expect(useStore.getState().current[0]).toEqual(FIXTURE_COMMITS[0])
+    })
+
+    it("resets everything, including author replacements", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+        useStore.getState().setAuthorReplacements([{ matchEmail: "a@b.c", name: "N", email: "e@f.g" }])
+        useStore.getState().resetAll()
+        expect(useStore.getState().current).toEqual(FIXTURE_COMMITS)
+        expect(useStore.getState().authorReplacements).toEqual([])
+    })
+
+    it("clears the session back to an empty import", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().clearSession()
+        expect(useStore.getState().originals).toEqual([])
+        expect(useStore.getState().current).toEqual([])
+        expect(useStore.getState().step).toBe(1)
+    })
+
+    it("keeps user preferences when the session is cleared", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().setThemeMode("dark")
+        useStore.getState().setExportFormat("filter-branch")
+        useStore.getState().clearSession()
+
+        expect(useStore.getState().originals).toEqual([])
+        expect(useStore.getState().step).toBe(1)
+        expect(useStore.getState().themeMode).toBe("dark")
+        expect(useStore.getState().exportFormat).toBe("filter-branch")
+    })
+})
+
+describe("selection slice", () => {
+    beforeEach(() => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+    })
+
+    it("toggles a single sha on and off", () => {
+        useStore.getState().toggleSelected(FIXTURE_COMMITS[0]!.sha)
+        expect(useStore.getState().selected).toEqual([FIXTURE_COMMITS[0]!.sha])
+        useStore.getState().toggleSelected(FIXTURE_COMMITS[0]!.sha)
+        expect(useStore.getState().selected).toEqual([])
+    })
+
+    it("selects an inclusive range in display order", () => {
+        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[2]!.sha)
+        expect(useStore.getState().selected).toEqual(FIXTURE_COMMITS.map((c) => c.sha))
+    })
+
+    it("selects the same range when the endpoints are given in reverse", () => {
+        useStore.getState().selectRange(FIXTURE_COMMITS[2]!.sha, FIXTURE_COMMITS[0]!.sha)
+        expect(useStore.getState().selected).toEqual(FIXTURE_COMMITS.map((c) => c.sha))
+    })
+
+    it("adds a range to an existing selection without duplicating", () => {
+        useStore.getState().toggleSelected(FIXTURE_COMMITS[0]!.sha)
+        useStore.getState().selectRange(FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[1]!.sha)
+        expect(useStore.getState().selected).toEqual([FIXTURE_COMMITS[0]!.sha, FIXTURE_COMMITS[1]!.sha])
+    })
+
+    it("drops selected shas that are no longer present after a re-import", () => {
+        useStore.getState().setSelected(FIXTURE_COMMITS.map((c) => c.sha))
+        useStore.getState().importCommits([FIXTURE_COMMITS[0]!])
+        expect(useStore.getState().selected).toEqual([])
+    })
+
+    it("clears the selection", () => {
+        useStore.getState().setSelected(FIXTURE_COMMITS.map((c) => c.sha))
+        useStore.getState().clearSelected()
+        expect(useStore.getState().selected).toEqual([])
+    })
+})
+
+describe("undo and redo", () => {
+    beforeEach(() => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.temporal.getState().clear()
+    })
+
+    it("undoes an edit", () => {
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+        useStore.temporal.getState().undo()
+        expect(useStore.getState().current[0]!.authorName).toBe("Jane Doe")
+    })
+
+    it("redoes an undone edit", () => {
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+        useStore.temporal.getState().undo()
+        useStore.temporal.getState().redo()
+        expect(useStore.getState().current[0]!.authorName).toBe("Edited")
+    })
+
+    it("does not put step navigation on the undo stack", () => {
+        useStore.getState().setStep(3)
+        expect(useStore.temporal.getState().pastStates).toHaveLength(0)
+    })
+
+    it("does not put theme changes on the undo stack", () => {
+        useStore.getState().setThemeMode("dark")
+        expect(useStore.temporal.getState().pastStates).toHaveLength(0)
+    })
+})
+
+describe("session slice", () => {
+    it("starts on the first step with system theme and commit timezones", () => {
+        const slice = createSessionSlice(() => {})
+        expect(slice.step).toBe(1)
+        expect(slice.themeMode).toBe("system")
+        expect(slice.timezoneMode).toBe("commit")
+        expect(slice.updateCommitter).toBe(true)
+        expect(slice.exportFormat).toBe("filter-repo")
+    })
+})
