@@ -156,7 +156,9 @@ describe("persistence", () => {
 
         const raw = localStorage.getItem("git-history-editor-improved")
         expect(raw).not.toBeNull()
-        // Nesting guard: persist must wrap temporal. Swapped, the history lands in storage and grows without bound.
+        // Guards persist's partialize whitelist: this is what keeps unintended state out of localStorage.
+        // Note the nesting order of persist and temporal is NOT what protects this - zundo keeps its history
+        // in a separate sub-store that persist never serialises, so either nesting passes these assertions.
         expect(raw).not.toContain("pastStates")
         expect(raw).not.toContain("futureStates")
 
