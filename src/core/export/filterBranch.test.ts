@@ -80,6 +80,20 @@ describe("generateFilterBranchScript", () => {
     })
 
     it("applies a global author replacement before the per-commit case", () => {
+        // Needs a per-commit edit too, or there is no per-commit case block to order against.
+        const input = withEdit(
+            0,
+            { authorName: "Jane R. Doe" },
+            {
+                authorReplacements: [{ matchEmail: "j.doe@old-corp.com", name: "Jane Doe", email: "jane@example.com" }],
+            },
+        )
+        const script = generateFilterBranchScript(input)
+        expect(script).toContain('case "$GIT_AUTHOR_EMAIL" in')
+        expect(script.indexOf('case "$GIT_AUTHOR_EMAIL" in')).toBeLessThan(script.indexOf('case "$GIT_COMMIT" in'))
+    })
+
+    it("omits the per-commit case block entirely when only a global author replacement is set", () => {
         const input: ExportInput = {
             originals: FIXTURE_COMMITS,
             current: FIXTURE_COMMITS,
@@ -88,7 +102,7 @@ describe("generateFilterBranchScript", () => {
         }
         const script = generateFilterBranchScript(input)
         expect(script).toContain('case "$GIT_AUTHOR_EMAIL" in')
-        expect(script.indexOf('case "$GIT_AUTHOR_EMAIL" in')).toBeLessThan(script.indexOf('case "$GIT_COMMIT" in'))
+        expect(script).not.toContain('case "$GIT_COMMIT" in')
     })
 
     it("cleans up its filter files and the filter-branch backup refs", () => {

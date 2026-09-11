@@ -58,9 +58,7 @@ export function generateFilterBranchScript(input: ExportInput): string {
 
     const hasEnv = envCases.length > 0 || replacementCase.length > 0
     if (hasEnv) {
-        // The per-commit case is emitted even when empty, so a global replacement without any per-commit
-        // edits still produces a script whose $GIT_COMMIT case follows the $GIT_AUTHOR_EMAIL one in order.
-        const body = [replacementCase, `case "$GIT_COMMIT" in\n${envCases.join("\n")}\nesac`].filter((p) => p.length > 0).join("\n")
+        const body = [replacementCase, envCases.length > 0 ? `case "$GIT_COMMIT" in\n${envCases.join("\n")}\nesac` : ""].filter((p) => p.length > 0).join("\n")
         lines.push(...heredoc("ghe-env-filter.sh", body))
     }
     if (msgCases.length > 0) {
