@@ -17,7 +17,9 @@ export const useStore = create<Store>()(
     persist(
         temporal(
             (set, get) => ({
-                ...createCommitsSlice(set, get as () => CommitsSlice),
+                // `useStore` is still in its own initializer here, but the callback only runs when an action fires,
+                // by which time the binding exists.
+                ...createCommitsSlice(set, get as () => CommitsSlice, () => useStore.temporal.getState().clear()),
                 ...createSelectionSlice(set, get as () => SelectionSlice & { current: Store["current"] }),
                 ...createSessionSlice(set),
             }),

@@ -187,3 +187,42 @@ describe("persistence", () => {
         expect(useStore.temporal.getState().pastStates.length).toBeGreaterThan(0)
     })
 })
+
+// These tests deliberately do not lean on the suite's `beforeEach`, which clears the temporal store itself and so
+// hides the bug: every history entry they assert about is produced inside the test body.
+describe("the undo boundary around an import", () => {
+    it("does not leave the import itself on the undo stack", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        expect(useStore.temporal.getState().pastStates).toHaveLength(0)
+    })
+
+    it("cannot be undone past, so the table is never left empty", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.temporal.getState().undo()
+        expect(useStore.getState().current).toEqual(FIXTURE_COMMITS)
+        expect(useStore.getState().step).toBe(2)
+    })
+
+    it("keeps `current` and `originals` aligned after a re-import, so the diff and the script cannot disagree", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+
+        const other = [{ ...FIXTURE_COMMITS[2]!, sha: "0123456789abcdef0123456789abcdef01234567" }]
+        useStore.getState().importCommits(other)
+        useStore.temporal.getState().undo()
+
+        expect(useStore.getState().current).toEqual(other)
+        expect(useStore.getState().current).toEqual(useStore.getState().originals)
+    })
+
+    it("clears the history when the session is cleared", () => {
+        useStore.getState().importCommits(FIXTURE_COMMITS)
+        useStore.getState().updateCommit(FIXTURE_COMMITS[0]!.sha, { authorName: "Edited" })
+        useStore.getState().clearSession()
+
+        expect(useStore.temporal.getState().pastStates).toHaveLength(0)
+        useStore.temporal.getState().undo()
+        expect(useStore.getState().current).toEqual([])
+        expect(useStore.getState().step).toBe(1)
+    })
+})

@@ -31,20 +31,30 @@ type Setter = (partial: Partial<Store>) => void
 /** The subset of the store the commits slice needs to read. */
 type Getter = () => CommitsSlice
 
+/** Drops every recorded undo and redo step. Supplied by the store, which owns the zundo temporal middleware. */
+type ClearHistory = () => void
+
 /**
  * Build the commits slice.
  *
  * @param set Store setter.
  * @param get Store getter.
+ * @param clearHistory Drops the undo and redo stacks, called wherever the imported history is replaced.
  * @returns The slice's state and actions.
  */
-export function createCommitsSlice(set: Setter, get: Getter): CommitsSlice {
+export function createCommitsSlice(set: Setter, get: Getter, clearHistory: ClearHistory): CommitsSlice {
     return {
         originals: [],
         current: [],
         authorReplacements: [],
 
-        importCommits: (commits) => set({ originals: commits, current: commits, authorReplacements: [], selected: [], step: 2 }),
+        importCommits: (commits) => {
+            set({ originals: commits, current: commits, authorReplacements: [], selected: [], step: 2 })
+            // The undo stack must not cross an import. zundo tracks `current` but not `originals`, so an undo taken
+            // straight after an import empties the table, and after a re-import it pairs the previous repository's
+            // `current` with the new `originals` - which makes the change strip and the generated script disagree.
+            clearHistory()
+        },
 
         updateCommit: (sha, patch) => set({ current: get().current.map((c) => (c.sha === sha ? { ...c, ...patch } : c)) }),
 
@@ -62,6 +72,9 @@ export function createCommitsSlice(set: Setter, get: Getter): CommitsSlice {
 
         resetAll: () => set({ current: [...get().originals], authorReplacements: [] }),
 
-        clearSession: () => set({ originals: [], current: [], authorReplacements: [], selected: [], step: 1 }),
+        clearSession: () => {
+            set({ originals: [], current: [], authorReplacements: [], selected: [], step: 1 })
+            clearHistory()
+        },
     }
 }
