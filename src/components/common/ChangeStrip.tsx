@@ -2,6 +2,7 @@ import RedoIcon from "@mui/icons-material/Redo"
 import RestartAltIcon from "@mui/icons-material/RestartAlt"
 import UndoIcon from "@mui/icons-material/Undo"
 import { Box, Button, Divider, Paper, Tooltip, Typography } from "@mui/material"
+import { useMemo } from "react"
 import { useStore as useZustandStore } from "zustand"
 import { useStore } from "../../store"
 import { changedCommitCount, computeChangeSet } from "../../core/diff"
@@ -17,7 +18,7 @@ export default function ChangeStrip() {
     const authorReplacements = useStore((s) => s.authorReplacements)
     const resetAll = useStore((s) => s.resetAll)
 
-    const changed = changedCommitCount(computeChangeSet({ originals, current, authorReplacements, updateCommitter: true }))
+    const changed = useMemo(() => changedCommitCount(computeChangeSet({ originals, current, authorReplacements, updateCommitter: true })), [originals, current, authorReplacements])
     const canUndo = useZustandStore(useStore.temporal, (s) => s.pastStates.length > 0)
     const canRedo = useZustandStore(useStore.temporal, (s) => s.futureStates.length > 0)
 

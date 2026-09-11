@@ -4,6 +4,7 @@ import { AppBar, Alert, Box, Container, CssBaseline, IconButton, Step, StepButto
 import { LocalizationProvider } from "@mui/x-date-pickers"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import { useMemo } from "react"
+import ImportStep from "./components/import/ImportStep"
 import { useUndoRedoShortcuts } from "./hooks/useUndoRedoShortcuts"
 import { isPersistenceAvailable, useStore } from "./store"
 import { buildTheme } from "./theme"
@@ -38,7 +39,9 @@ export default function App() {
                             Git History Editor
                         </Typography>
                         <Tooltip title={resolved === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
-                            <IconButton onClick={() => setThemeMode(resolved === "dark" ? "light" : "dark")}>{resolved === "dark" ? <LightModeIcon /> : <DarkModeIcon />}</IconButton>
+                            <IconButton aria-label={resolved === "dark" ? "Switch to light theme" : "Switch to dark theme"} onClick={() => setThemeMode(resolved === "dark" ? "light" : "dark")}>
+                                {resolved === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+                            </IconButton>
                         </Tooltip>
                     </Toolbar>
                 </AppBar>
@@ -58,7 +61,7 @@ export default function App() {
                         </Alert>
                     )}
 
-                    <Box>{step === 1 ? <Placeholder name="Import" /> : step === 2 ? <Placeholder name="Edit" /> : <Placeholder name="Export" />}</Box>
+                    <Box>{step === 1 ? <ImportStep /> : step === 2 ? <Placeholder name="Edit" /> : <Placeholder name="Export" />}</Box>
                 </Container>
             </LocalizationProvider>
         </ThemeProvider>
