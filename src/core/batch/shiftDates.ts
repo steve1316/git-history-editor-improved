@@ -41,7 +41,11 @@ export function shiftDates(commits: Commit[], shas: Iterable<string>, offset: Sh
 
 /**
  * Distribute the selected commits evenly between two instants, earliest first. Chronological order within the
- * selection is preserved regardless of array order.
+ * selection is preserved regardless of array order. The earliest selected commit always lands exactly on
+ * `startEpoch` and the latest exactly on `endEpoch`; every assigned timestamp is a whole second and the
+ * sequence is non-decreasing. When the requested range is shorter than one second per commit, distinct commits
+ * necessarily share a timestamp rather than being pushed past `endEpoch` to stay distinct -- git permits
+ * duplicate author timestamps, so this is treated as an honest answer, not an error.
  *
  * @param commits All commits, in import order.
  * @param shas The SHAs to redistribute.

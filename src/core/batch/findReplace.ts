@@ -24,7 +24,9 @@ export interface FindReplaceRow {
 
 /**
  * Build the regular expression a find and replace will use. Shared by the preview and the apply path so the
- * preview cannot drift from the result.
+ * preview cannot drift from the result. Always compiled with the multiline flag, since commit messages are
+ * routinely multi-line, so `^` and `$` anchor to line boundaries rather than to the start and end of the
+ * whole message.
  *
  * @param options The search settings.
  * @returns The compiled expression, or `null` when the search is empty or the regex is invalid.

@@ -78,11 +78,33 @@ describe("spreadDates", () => {
         expect(result[1]!.authored.epochSeconds).toBe(start)
     })
 
-    it("rounds to whole seconds, because git timestamps have no sub-second precision", () => {
-        const result = spreadDates(FIXTURE_COMMITS, ALL, start, start + 5)
-        for (const commit of result) {
-            expect(Number.isInteger(commit.authored.epochSeconds)).toBe(true)
+    it("assigns whole seconds, non-decreasing, with exact endpoints", () => {
+        const result = spreadDates(FIXTURE_COMMITS, ALL, start, end)
+        const assigned = result
+            .filter((c) => ALL.includes(c.sha))
+            .map((c) => c.authored.epochSeconds)
+            .sort((a, b) => a - b)
+
+        expect(assigned.every(Number.isInteger)).toBe(true)
+        for (let i = 1; i < assigned.length; i++) {
+            expect(assigned[i]!).toBeGreaterThanOrEqual(assigned[i - 1]!)
         }
+        expect(assigned[0]).toBe(start)
+        expect(assigned[assigned.length - 1]).toBe(end)
+    })
+
+    it("ties rather than overshooting when the range is too tight for distinct seconds", () => {
+        const result = spreadDates(FIXTURE_COMMITS, ALL, start, start + 1)
+        const assigned = result
+            .filter((c) => ALL.includes(c.sha))
+            .map((c) => c.authored.epochSeconds)
+            .sort((a, b) => a - b)
+
+        // Three commits cannot occupy three distinct whole seconds inside a one-second range.
+        expect(new Set(assigned).size).toBeLessThan(assigned.length)
+        // But nothing is pushed outside the requested range.
+        expect(Math.min(...assigned)).toBe(start)
+        expect(Math.max(...assigned)).toBe(start + 1)
     })
 
     it("returns the input unchanged for an empty selection", () => {

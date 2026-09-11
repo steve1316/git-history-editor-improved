@@ -21,7 +21,8 @@ export function listAuthors(commits: Commit[]): AuthorSummary[] {
     const counts = new Map<string, AuthorSummary>()
 
     for (const commit of commits) {
-        // A newline cannot appear in a git name or email, so it is a safe grouping separator.
+        // Names and emails come from parseLog, which splits on unit separators, so neither can contain a
+        // newline -- making it a safe grouping separator here.
         const key = `${commit.authorName}\n${commit.authorEmail}`
         const existing = counts.get(key)
         if (existing) {
