@@ -61,7 +61,13 @@ describe("a commit whose wall clock falls inside the viewer's DST spring-forward
     })
 
     afterAll(() => {
-        process.env.TZ = originalTz
+        // Assigning `undefined` back would coerce to the string "undefined", which Node reads as a zero offset and leaves
+        // the whole worker pinned to UTC for every test file that follows.
+        if (originalTz === undefined) {
+            delete process.env.TZ
+        } else {
+            process.env.TZ = originalTz
+        }
     })
 
     it("really is running in the pinned zone, so the rest of this block proves something", () => {
