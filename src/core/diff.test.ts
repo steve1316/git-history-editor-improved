@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { changedCommitCount, computeChangeSet } from "./diff"
+import { changedCommitCount, commitChanged, computeChangeSet } from "./diff"
 import { FIXTURE_COMMITS } from "./testFixtures"
 import type { Commit, ExportInput } from "./types"
 
@@ -68,5 +68,33 @@ describe("computeChangeSet", () => {
         const replacements = [{ matchEmail: "j.doe@old-corp.com", name: "Jane Doe", email: "jane@example.com" }]
         const set = computeChangeSet({ originals: FIXTURE_COMMITS, current: FIXTURE_COMMITS, authorReplacements: replacements, updateCommitter: true })
         expect(set.authorReplacements).toEqual(replacements)
+    })
+})
+
+describe("commitChanged", () => {
+    const base = FIXTURE_COMMITS[0]!
+
+    it("reports an unedited commit as unchanged", () => {
+        expect(commitChanged(base, { ...base })).toBe(false)
+    })
+
+    it.each([
+        ["authorName", { authorName: "Jane R. Doe" }],
+        ["authorEmail", { authorEmail: "jane@new.example" }],
+        ["message", { message: "Rewritten subject\n" }],
+        ["authored", { authored: { ...base.authored, epochSeconds: base.authored.epochSeconds + 60 } }],
+    ])("reports a change to %s", (_label, patch) => {
+        expect(commitChanged(base, { ...base, ...patch })).toBe(true)
+    })
+
+    it("agrees with computeChangeSet, which is the point of sharing the comparison", () => {
+        const current = FIXTURE_COMMITS.map((c, i) => (i === 1 ? { ...c, authorName: "Edited" } : c))
+        const changed = computeChangeSet({ originals: FIXTURE_COMMITS, current, authorReplacements: [], updateCommitter: true }).commits.map((c) => c.sha)
+        expect(FIXTURE_COMMITS.filter((c, i) => commitChanged(c, current[i]!)).map((c) => c.sha)).toEqual(changed)
+    })
+
+    it("counts an offset-only change, matching the diff's rendered comparison", () => {
+        const shifted = { ...base, authored: { epochSeconds: base.authored.epochSeconds, offsetMinutes: 0 } }
+        expect(commitChanged(base, shifted)).toBe(true)
     })
 })

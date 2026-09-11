@@ -39,6 +39,18 @@ export function changedCommitCount(changeSet: ChangeSet): number {
 }
 
 /**
+ * Report whether one commit differs from its imported form, using the same field-by-field comparison the change set and the generators use.
+ * The table's per-row dirty marker calls this so a row can never disagree with the diff or the exported script.
+ *
+ * @param original The commit as imported.
+ * @param current The commit as edited.
+ * @returns True when at least one editable field changed.
+ */
+export function commitChanged(original: Commit, current: Commit): boolean {
+    return diffCommit(original, current).length > 0
+}
+
+/**
  * Compare one commit against its imported form.
  *
  * @param original The commit as imported.

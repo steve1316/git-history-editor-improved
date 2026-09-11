@@ -2,6 +2,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import RestartAltIcon from "@mui/icons-material/RestartAlt"
 import { Box, Checkbox, IconButton, Tooltip, Typography } from "@mui/material"
+import { commitChanged } from "../../core/diff"
 import { formatDisplay } from "../../core/gitDate"
 import type { Commit } from "../../core/types"
 import { MONO_FONT } from "../../theme"
@@ -39,11 +40,7 @@ interface CommitRowProps {
  * @returns The row.
  */
 export default function CommitRow({ commit, original, selected, expanded, onToggle, onExpand, onChange, onReset }: CommitRowProps) {
-    const dirty =
-        commit.authorName !== original.authorName ||
-        commit.authorEmail !== original.authorEmail ||
-        commit.message !== original.message ||
-        formatDisplay(commit.authored) !== formatDisplay(original.authored)
+    const dirty = commitChanged(original, commit)
 
     return (
         <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: selected ? "action.selected" : undefined }}>
