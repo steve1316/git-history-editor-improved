@@ -109,6 +109,7 @@ describe("generateFilterBranchScript", () => {
         const script = generateFilterBranchScript(withEdit(0, { authorName: "Jane R. Doe" }))
         expect(script).toContain('rm -f "$GHE_DIR/ghe-env-filter.sh"')
         expect(script).toContain('rm -fr "$(git rev-parse --git-dir)/refs/original/"')
+        expect(script.indexOf("git filter-branch")).toBeLessThan(script.indexOf('rm -f "$GHE_DIR/ghe-env-filter.sh"'))
     })
 
     // Regression: filter-branch runs its filters with the working directory set to a temporary rewrite
