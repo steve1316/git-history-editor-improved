@@ -48,8 +48,10 @@ describe("shiftDates", () => {
         expect(result[2]!.authored.offsetMinutes).toBe(0)
     })
 
-    it("preserves each commit's own timezone offset for a zero offset", () => {
-        const result = shiftDates(FIXTURE_COMMITS, ALL, { years: 0, days: 0, hours: 0, minutes: 0 })
+    it("preserves each commit's own timezone offset when years is zero but the overall offset is not", () => {
+        // years: 0 alone would make isZeroOffset true and short-circuit before the zone arithmetic ever runs, so
+        // days is non-zero here to force the real per-commit FixedOffsetZone path to execute.
+        const result = shiftDates(FIXTURE_COMMITS, ALL, { years: 0, days: 1, hours: 0, minutes: 0 })
         expect(result[0]!.authored.offsetMinutes).toBe(540)
         expect(result[1]!.authored.offsetMinutes).toBe(-420)
         expect(result[2]!.authored.offsetMinutes).toBe(0)

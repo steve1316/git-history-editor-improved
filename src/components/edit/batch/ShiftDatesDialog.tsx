@@ -61,7 +61,10 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
 
                 {tab === 0 ? (
                     <Stack spacing={2}>
-                        <Alert severity="info">Every selected commit moves by the same amount, so the spacing between them is preserved. Use negative numbers to move backwards.</Alert>
+                        <Alert severity="info">
+                            Days, hours, and minutes move every selected commit by the same amount, preserving the gaps between them. Years shift the calendar date, so a pair of commits straddling a
+                            leap day will end up a day further apart. Use negative numbers to move backwards.
+                        </Alert>
                         <Stack direction="row" spacing={2}>
                             <TextField label="Years" type="number" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} fullWidth />
                             <TextField label="Days" type="number" value={days} onChange={(e) => setDays(Number(e.target.value) || 0)} fullWidth />

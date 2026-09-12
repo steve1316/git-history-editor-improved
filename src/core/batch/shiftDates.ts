@@ -27,8 +27,8 @@ export function isZeroOffset(offset: ShiftOffset): boolean {
  * Move the author timestamp of every selected commit by the same amount. Each commit is shifted in its own
  * fixed-offset zone, so `years` is calendar-aware (it lands on the same wall-clock date and time a year later, or
  * the closest one when that date does not exist, such as Feb 29) and `days` stays exactly 24 hours rather than
- * being distorted by a daylight-saving rule. Because years are calendar months of differing lengths, this only
- * preserves the spacing between shifted commits when `years` is zero -- a pair whose interval straddles a leap
+ * being distorted by a daylight-saving rule. Because a year spans a variable number of days (365 or 366), this
+ * only preserves the spacing between shifted commits when `years` is zero -- a pair whose interval straddles a leap
  * day, for instance, ends up with a spacing one day different from before. The committer timestamp is left alone.
  *
  * @param commits All commits, in import order.
@@ -53,7 +53,7 @@ export function shiftDates(commits: Commit[], shas: Iterable<string>, offset: Sh
             hours: offset.hours,
             minutes: offset.minutes,
         })
-        return { ...commit, authored: { epochSeconds: shifted.toMillis() / 1000, offsetMinutes: commit.authored.offsetMinutes } }
+        return { ...commit, authored: { epochSeconds: Math.round(shifted.toMillis() / 1000), offsetMinutes: commit.authored.offsetMinutes } }
     })
 }
 
