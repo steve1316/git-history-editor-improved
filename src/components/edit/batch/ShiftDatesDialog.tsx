@@ -2,7 +2,7 @@ import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker"
 import { DateTime } from "luxon"
 import { useState } from "react"
-import { shiftDates, spreadDates } from "../../../core/batch/shiftDates"
+import { isZeroOffset, shiftDates, spreadDates } from "../../../core/batch/shiftDates"
 import { formatOffset } from "../../../core/gitDate"
 import { useStore } from "../../../store"
 import type { BatchDialogProps } from "./types"
@@ -30,18 +30,20 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
     const replaceCommits = useStore((s) => s.replaceCommits)
 
     const [tab, setTab] = useState(0)
+    const [years, setYears] = useState(0)
     const [days, setDays] = useState(0)
     const [hours, setHours] = useState(0)
     const [minutes, setMinutes] = useState(0)
     const [start, setStart] = useState<DateTime | null>(DateTime.now())
     const [end, setEnd] = useState<DateTime | null>(DateTime.now())
 
+    const offset = { years, days, hours, minutes }
     const rangeInvalid = tab === 1 && (!start || !end || !start.isValid || !end.isValid || end.toMillis() < start.toMillis())
     const zoneHint = `Interpreted in your local time, ${localZoneLabel()}.`
 
     const apply = (): void => {
         if (tab === 0) {
-            replaceCommits(shiftDates(commits, selected, { days, hours, minutes }))
+            replaceCommits(shiftDates(commits, selected, offset))
         } else if (start && end && !rangeInvalid) {
             replaceCommits(spreadDates(commits, selected, Math.round(start.toMillis() / 1000), Math.round(end.toMillis() / 1000)))
         }
@@ -61,6 +63,7 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
                     <Stack spacing={2}>
                         <Alert severity="info">Every selected commit moves by the same amount, so the spacing between them is preserved. Use negative numbers to move backwards.</Alert>
                         <Stack direction="row" spacing={2}>
+                            <TextField label="Years" type="number" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} fullWidth />
                             <TextField label="Days" type="number" value={days} onChange={(e) => setDays(Number(e.target.value) || 0)} fullWidth />
                             <TextField label="Hours" type="number" value={hours} onChange={(e) => setHours(Number(e.target.value) || 0)} fullWidth />
                             <TextField label="Minutes" type="number" value={minutes} onChange={(e) => setMinutes(Number(e.target.value) || 0)} fullWidth />
@@ -92,7 +95,7 @@ export default function ShiftDatesDialog({ open, onClose }: BatchDialogProps) {
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
-                <Button variant="contained" onClick={apply} disabled={(tab === 0 && days === 0 && hours === 0 && minutes === 0) || rangeInvalid}>
+                <Button variant="contained" onClick={apply} disabled={(tab === 0 && isZeroOffset(offset)) || rangeInvalid}>
                     Apply
                 </Button>
             </DialogActions>

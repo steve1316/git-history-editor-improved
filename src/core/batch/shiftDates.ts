@@ -1,7 +1,10 @@
+import { DateTime, FixedOffsetZone } from "luxon"
 import type { Commit } from "../types"
 
 /** A relative amount of time to move selected commits by. Any component may be negative. */
 export interface ShiftOffset {
+    /** Whole years to move by. */
+    years: number
     /** Whole days to move by. */
     days: number
     /** Whole hours to move by. */
@@ -11,18 +14,22 @@ export interface ShiftOffset {
 }
 
 /**
- * Collapse a shift offset into seconds.
+ * Check whether a shift offset would move anything at all.
  *
- * @param offset The offset to collapse.
- * @returns The equivalent number of seconds, which may be negative.
+ * @param offset The offset to check.
+ * @returns `true` when every component is zero.
  */
-export function offsetToSeconds(offset: ShiftOffset): number {
-    return offset.days * 86400 + offset.hours * 3600 + offset.minutes * 60
+export function isZeroOffset(offset: ShiftOffset): boolean {
+    return offset.years === 0 && offset.days === 0 && offset.hours === 0 && offset.minutes === 0
 }
 
 /**
- * Move the author timestamp of every selected commit by the same amount, which preserves the spacing between them.
- * The committer timestamp is left alone.
+ * Move the author timestamp of every selected commit by the same amount. Each commit is shifted in its own
+ * fixed-offset zone, so `years` is calendar-aware (it lands on the same wall-clock date and time a year later, or
+ * the closest one when that date does not exist, such as Feb 29) and `days` stays exactly 24 hours rather than
+ * being distorted by a daylight-saving rule. Because years are calendar months of differing lengths, this only
+ * preserves the spacing between shifted commits when `years` is zero -- a pair whose interval straddles a leap
+ * day, for instance, ends up with a spacing one day different from before. The committer timestamp is left alone.
  *
  * @param commits All commits, in import order.
  * @param shas The SHAs to move.
@@ -31,12 +38,23 @@ export function offsetToSeconds(offset: ShiftOffset): number {
  */
 export function shiftDates(commits: Commit[], shas: Iterable<string>, offset: ShiftOffset): Commit[] {
     const selected = new Set(shas)
-    const delta = offsetToSeconds(offset)
-    if (selected.size === 0 || delta === 0) {
+    if (selected.size === 0 || isZeroOffset(offset)) {
         return commits.slice()
     }
 
-    return commits.map((commit) => (selected.has(commit.sha) ? { ...commit, authored: { ...commit.authored, epochSeconds: commit.authored.epochSeconds + delta } } : commit))
+    return commits.map((commit) => {
+        if (!selected.has(commit.sha)) {
+            return commit
+        }
+        const zone = FixedOffsetZone.instance(commit.authored.offsetMinutes)
+        const shifted = DateTime.fromMillis(commit.authored.epochSeconds * 1000, { zone }).plus({
+            years: offset.years,
+            days: offset.days,
+            hours: offset.hours,
+            minutes: offset.minutes,
+        })
+        return { ...commit, authored: { epochSeconds: shifted.toMillis() / 1000, offsetMinutes: commit.authored.offsetMinutes } }
+    })
 }
 
 /**
