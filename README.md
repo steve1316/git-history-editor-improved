@@ -8,7 +8,7 @@ Nothing is uploaded. Your commit data is parsed, edited, and turned into a scrip
 
 ## What it does
 
-1. **Import** - run one `git log` command and paste, drop, or load its output. There is no commit limit.
+1. **Import** - run one `git log` command (a PowerShell version is included for Windows) and paste, drop, or load its output. There is no commit limit.
 2. **Edit** - change author names, emails, dates, and messages, one commit at a time or in bulk.
 3. **Export** - review a diff of everything that changed, then copy a `git filter-repo` command that applies it.
 
