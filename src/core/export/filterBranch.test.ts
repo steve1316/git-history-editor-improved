@@ -46,9 +46,11 @@ describe("generateFilterBranchScript", () => {
         expect(script).not.toContain(`${hostile})`)
         // Both the env-filter case and the msg-filter case have to be quoted, so the quoted pattern appears exactly twice.
         expect(script.split(`'${hostile}')`)).toHaveLength(3)
-        // Every line carrying the hostile text is a whole quoted case pattern, so none of it can be read as shell syntax.
+        // Every line carrying the hostile text is a whole quoted case pattern or a rewrite-range line that quotes it whole, so none of it can be
+        // read as shell syntax.
+        const safeLines = [`'${hostile}')`, `if git rev-parse --quiet --verify '${hostile}^' >/dev/null; then`, `    GHE_RANGE='${hostile}^..HEAD'`]
         for (const line of script.split("\n").filter((l) => l.includes("touch /tmp/PWNED"))) {
-            expect(line).toBe(`'${hostile}')`)
+            expect(safeLines).toContain(line)
         }
     })
 
@@ -123,11 +125,12 @@ describe("generateFilterBranchScript", () => {
         expect(script).not.toContain('case "$GIT_COMMIT" in')
     })
 
-    it("cleans up its filter files and the filter-branch backup refs", () => {
+    it("cleans up its filter files but keeps the filter-branch backup refs", () => {
         const script = generateFilterBranchScript(withEdit(0, { authorName: "Jane R. Doe" }))
         expect(script).toContain('rm -f "$GHE_DIR/ghe-env-filter.sh"')
-        expect(script).toContain('rm -fr "$(git rev-parse --git-dir)/refs/original/"')
         expect(script.indexOf("git filter-branch")).toBeLessThan(script.indexOf('rm -f "$GHE_DIR/ghe-env-filter.sh"'))
+        expect(script).not.toContain("rm -fr")
+        expect(script).toContain("refs/original/")
     })
 
     // Regression: filter-branch runs its filters with the working directory set to a temporary rewrite

@@ -6,8 +6,9 @@ import { generateFilterBranchScript } from "./filterBranch"
 import { generateFilterRepoScript } from "./filterRepo"
 
 /**
- * Every other generator test asserts on the text of the output. These two hand the output to the interpreters that will actually read it,
- * which is the only way to catch a generator whose output parses as something other than what was intended.
+ * Every other generator test asserts on the text of the output. The syntax checks here hand the output to the interpreters that will actually
+ * read it, which is the only way to catch a generator whose output parses as something other than what was intended. The rewrite-range
+ * checks cover what both generators share: how much history they rewrite.
  *
  * Nothing here ever runs a generated script: `bash -n` only parses, and the Python callback is only compiled.
  */
@@ -136,5 +137,65 @@ describe("the generated shell scripts", () => {
         for (const source of [repo, branch, ...branchFilters.map((b) => b.body)]) {
             expect(bashSyntaxError(BASH!, source)).toBe("")
         }
+    })
+
+    it("parse under bash -n when they rewrite a range rather than every ref", (ctx) => {
+        if (!BASH) {
+            skipMissingTool(ctx, "no working `bash` on PATH, so the range-limited scripts were never syntax-checked.")
+            return
+        }
+        for (const script of [generateFilterRepoScript(PER_COMMIT_INPUT), generateFilterBranchScript(PER_COMMIT_INPUT)]) {
+            expect(script).toContain('"$GHE_RANGE"')
+            expect(bashSyntaxError(BASH!, script)).toBe("")
+        }
+    })
+})
+
+/** The same edits without the global author replacement, so the generators can limit the rewrite to the current branch. */
+const PER_COMMIT_INPUT: ExportInput = { ...INPUT, authorReplacements: [] }
+
+// Regression: both scripts used to rewrite every ref. Each re-created commit loses any signature, so an untouched signed commit on another
+// branch, or deep in the current one, came back with a new hash and took every later hash with it.
+describe("the rewrite range", () => {
+    const oldest = FIXTURE_COMMITS[FIXTURE_COMMITS.length - 1]!.sha
+
+    it.each([
+        ["filter-branch", generateFilterBranchScript],
+        ["filter-repo", generateFilterRepoScript],
+    ])("is limited to the oldest edited commit onwards for per-commit edits in %s", (_, generate) => {
+        const script = generate(PER_COMMIT_INPUT)
+        expect(script).not.toContain("--all")
+        expect(script).toContain(`GHE_RANGE='${oldest}^..HEAD'`)
+        expect(script).toContain(`git rev-parse --quiet --verify '${oldest}^'`)
+        expect(script).toContain("GHE_RANGE=HEAD")
+    })
+
+    it("starts from the oldest edited commit, which is the last one in import order", () => {
+        const input: ExportInput = { ...PER_COMMIT_INPUT, current: [FIXTURE_COMMITS[0]!, { ...FIXTURE_COMMITS[1]!, authorName: "Edited" }, FIXTURE_COMMITS[2]!] }
+        expect(generateFilterBranchScript(input)).toContain(`GHE_RANGE='${FIXTURE_COMMITS[1]!.sha}^..HEAD'`)
+        expect(generateFilterRepoScript(input)).toContain(`GHE_RANGE='${FIXTURE_COMMITS[1]!.sha}^..HEAD'`)
+    })
+
+    it("covers every ref when a global author replacement is set, and says so", () => {
+        const branch = generateFilterBranchScript(INPUT)
+        expect(branch).toContain("-- --all")
+        expect(branch).not.toContain("GHE_RANGE")
+        expect(branch).toContain("rewrites every branch, tag and remote-tracking ref")
+
+        const repo = generateFilterRepoScript(INPUT)
+        expect(repo).not.toContain("--refs")
+        expect(repo).toContain("rewrites every branch, tag and remote-tracking ref")
+        expect(repo).toContain("removes the 'origin' remote")
+    })
+
+    it("tells the user rewritten commits lose their signatures", () => {
+        for (const script of [generateFilterBranchScript(PER_COMMIT_INPUT), generateFilterRepoScript(PER_COMMIT_INPUT)]) {
+            expect(script).toContain("Rewritten commits lose any signature")
+            expect(script).toContain("edited or not")
+        }
+    })
+
+    it("does not warn about the 'origin' remote when filter-repo only rewrites a range, since --refs keeps it", () => {
+        expect(generateFilterRepoScript(PER_COMMIT_INPUT)).not.toContain("'origin' remote")
     })
 })

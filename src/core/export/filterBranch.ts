@@ -2,6 +2,7 @@ import { computeChangeSet } from "../diff"
 import { chooseHeredocDelimiter, shellSingleQuote } from "../escape"
 import { formatGitDate } from "../gitDate"
 import type { Commit, EditableField, ExportInput } from "../types"
+import { renderRangeLines, rewriteBase } from "./rewriteScope"
 
 /** Above this many changed commits the UI warns that the generated script is unwieldy and recommends filter-repo. */
 export const FILTER_BRANCH_WARN_THRESHOLD = 50
@@ -50,9 +51,13 @@ export function generateFilterBranchScript(input: ExportInput): string {
     }
 
     const replacementCase = renderAuthorReplacements(changeSet.authorReplacements, input.updateCommitter)
+    const base = rewriteBase(changeSet)
     const lines: string[] = [
         "# Legacy fallback. git filter-branch is deprecated - prefer the filter-repo script.",
-        "# This rewrites history and changes every downstream commit hash. Back up your repository first.",
+        ...(base
+            ? ["# This rewrites the oldest edited commit and every later commit on the current branch. Each gets a new hash, edited or not."]
+            : ["# Author replacements match commits anywhere, so this rewrites every branch, tag and remote-tracking ref. Each commit gets a new hash."]),
+        "# Rewritten commits lose any signature. Back up your repository first.",
         'export GHE_DIR="$PWD"',
     ]
 
@@ -74,14 +79,19 @@ export function generateFilterBranchScript(input: ExportInput): string {
         filters.push(`--msg-filter '. "$GHE_DIR/ghe-msg-filter.sh"'`)
     }
 
-    lines.push(`git filter-branch --force ${filters.join(" ")} -- --all`)
+    if (base) {
+        lines.push(...renderRangeLines(base))
+    }
+    lines.push(`git filter-branch --force ${filters.join(" ")} -- ${base ? '"$GHE_RANGE"' : "--all"}`)
     if (hasEnv) {
         lines.push(`rm -f "$GHE_DIR/ghe-env-filter.sh"`)
     }
     if (msgCases.length > 0) {
         lines.push(`rm -f "$GHE_DIR/ghe-msg-filter.sh"`)
     }
-    lines.push(`rm -fr "$(git rev-parse --git-dir)/refs/original/"`, "")
+    // The backup is the easiest way back if the result is wrong, so it is left for the user to delete once they have checked.
+    lines.push(`echo 'The old refs are backed up under refs/original/. Once you have checked the result, delete them with:'`)
+    lines.push(`echo '  git for-each-ref --format="delete %(refname)" refs/original/ | git update-ref --stdin'`, "")
 
     return lines.join("\n")
 }
