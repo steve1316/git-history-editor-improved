@@ -3,6 +3,7 @@ import { useMemo } from "react"
 import { changedCommitCount, computeChangeSet } from "../../core/diff"
 import { FILTER_BRANCH_WARN_THRESHOLD, generateFilterBranchScript } from "../../core/export/filterBranch"
 import { generateFilterRepoScript } from "../../core/export/filterRepo"
+import { rewriteBase } from "../../core/export/rewriteScope"
 import { useStore } from "../../store"
 import CopyButton from "../common/CopyButton"
 import ChangeDiffList from "./ChangeDiffList"
@@ -47,7 +48,11 @@ export default function ExportStep() {
                         <CopyButton value={script} label="Copy script" />
                     </Box>
 
-                    <ExportWarnings format={exportFormat} largeFilterBranch={exportFormat === "filter-branch" && changed > FILTER_BRANCH_WARN_THRESHOLD} />
+                    <ExportWarnings
+                        format={exportFormat}
+                        largeFilterBranch={exportFormat === "filter-branch" && changed > FILTER_BRANCH_WARN_THRESHOLD}
+                        rewritesAllRefs={rewriteBase(changeSet) === null}
+                    />
 
                     <ScriptBlock script={script} />
                 </>

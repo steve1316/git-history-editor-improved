@@ -25,7 +25,7 @@ describe("generateFilterRepoScript", () => {
         const script = generateFilterRepoScript(withEdit(0, { authorName: "Jane R. Doe" }))
         expect(script).toContain("cat > ghe-rewrite.py <<'GHE_EOF'")
         expect(script).toContain("\nGHE_EOF\n")
-        expect(script).toContain('git filter-repo --force --commit-callback "$(cat ghe-rewrite.py)"')
+        expect(script).toContain('git filter-repo --force --refs "$GHE_RANGE" --commit-callback "$(cat ghe-rewrite.py)"')
     })
 
     it("keys the change map on the original commit hash as bytes", () => {

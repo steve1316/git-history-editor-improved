@@ -2,6 +2,7 @@ import { computeChangeSet } from "../diff"
 import { chooseHeredocDelimiter, pythonBytes } from "../escape"
 import { formatGitDate } from "../gitDate"
 import type { Commit, EditableField, ExportInput } from "../types"
+import { renderRangeLines, rewriteBase } from "./rewriteScope"
 
 /** Name of the callback file the generated script writes and then deletes. */
 const SCRIPT_FILE = "ghe-rewrite.py"
@@ -36,15 +37,28 @@ export function generateFilterRepoScript(input: ExportInput): string {
     const authorLines = changeSet.authorReplacements.map((r) => `    ${pythonBytes(r.matchEmail)}: (${pythonBytes(r.name)}, ${pythonBytes(r.email)}),`)
     const body = renderCallback(authorLines, entries, input.updateCommitter)
     const delimiter = chooseHeredocDelimiter(body)
+    const base = rewriteBase(changeSet)
+
+    // `--refs` implies `--partial`, under which filter-repo leaves the 'origin' remote in place.
+    const scope = base
+        ? [
+              "# This rewrites the oldest edited commit and every later commit on the current branch. Each gets a new hash, edited or not.",
+              "# Rewritten commits lose any signature. Back up your repository first.",
+          ]
+        : [
+              "# Author replacements match commits anywhere, so this rewrites every branch, tag and remote-tracking ref. Each commit gets a new hash.",
+              "# Rewritten commits lose any signature. Back up your repository first.",
+              "# git filter-repo removes the 'origin' remote by design. Re-add it afterwards if you need it.",
+          ]
 
     return [
         "# Requires: pip install git-filter-repo",
-        "# This rewrites history and changes every downstream commit hash. Back up your repository first.",
-        "# git filter-repo removes the 'origin' remote by design. Re-add it afterwards if you need it.",
+        ...scope,
         `cat > ${SCRIPT_FILE} <<'${delimiter}'`,
         body,
         delimiter,
-        `git filter-repo --force --commit-callback "$(cat ${SCRIPT_FILE})"`,
+        ...(base ? renderRangeLines(base) : []),
+        `git filter-repo --force${base ? ' --refs "$GHE_RANGE"' : ""} --commit-callback "$(cat ${SCRIPT_FILE})"`,
         `rm -f ${SCRIPT_FILE}`,
         "",
     ].join("\n")
